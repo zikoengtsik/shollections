@@ -1,0 +1,84 @@
+name: traefik
+
+networks:
+  ingress-traefik:
+    external: true
+
+services:
+  traefik:
+    image: ${TRAEFIK_APP_IMAGE}
+    container_name: ${TRAEFIK_APP_CONTAINER}
+    restart: always
+    networks:
+      - ingress-traefik
+    command:
+      # Disable data collection
+      - --global.sendanonymoususage=false
+      # Disable check for new version
+      - --global.checknewversion=false
+      # EntryPoints: web
+      - --entrypoints.web.address=:${TRAEFIK_APP_HTTP_PORT}
+      - --entrypoints.web.http.middlewares=redirect-to-https@file
+      # EntryPoints: websecure
+      - --entrypoints.websecure.address=:${TRAEFIK_APP_HTTPS_PORT}
+      - --entryPoints.websecure.asDefault=true
+      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
+      - --entrypoints.websecure.http.tls.domains[0].main=${TRAEFIK_APP_DNS_MAIN}
+      - --entrypoints.websecure.http.tls.domains[0].sans=${TRAEFIK_APP_DNS_SANS}
+      # Enable HTTP/3
+      - --entryPoints.websecure.http3
+      - --entryPoints.websecure.http3.advertisedport=${TRAEFIK_APP_HTTPS_PORT}
+      # Enable ping endpoint, useful for healthchecks
+      - --ping=true
+      # Enable api endpoint, useful for debugging
+      - --api=true
+      - --api.dashboard=true
+      - --api.insecure=false
+      # Enable logging
+      - --log.level=${TRAEFIK_APP_LOG_LEVEL}
+      - --log.format=${TRAEFIK_APP_LOG_FORMAT}
+      - --accesslog=${TRAEFIK_APP_ACCESS_LOG}
+      - --accesslog.format=${TRAEFIK_APP_ACCESS_LOG_FORMAT}
+      # Providers: Docker
+      - --providers.docker=true
+      - --providers.docker.watch=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.endpoint=unix:///var/run/docker.sock
+      - --providers.docker.network=ingress-traefik
+      # Providers: File
+      - --providers.file=true
+      - --providers.file.watch=true
+      - --providers.file.directory=/dynamic
+      # Certificates Resolvers: Let's Encrypt
+      - --certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_APP_ACME_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/etc/traefik/acme.json
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=${TRAEFIK_APP_ACME_DNS_PROVIDER}
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.propagation.delayBeforeChecks=30
+    ports:
+      # Use host mode to get the real client IP
+      - target: ${TRAEFIK_APP_HTTP_PORT}
+        published: ${TRAEFIK_APP_HTTP_PORT}
+        protocol: tcp
+        mode: host
+      - target: ${TRAEFIK_APP_HTTPS_PORT}
+        published: ${TRAEFIK_APP_HTTPS_PORT}
+        protocol: tcp
+        mode: host
+      - target: ${TRAEFIK_APP_HTTPS_PORT}
+        published: ${TRAEFIK_APP_HTTPS_PORT}
+        protocol: udp
+        mode: host
+    environment:
+      - TZ=${TIMEZONE}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${ROOT_DIR}/dynamic:/dynamic:ro
+      - ${ROOT_DIR}/data:/etc/traefik
+    healthcheck:
+      test: wget -q --spider --proxy off localhost:8080/ping || exit 1
+      interval: 15s
+      timeout: 15s
+      retries: 3
+      start_period: 15s

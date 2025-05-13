@@ -1,0 +1,49 @@
+name: vaultwarden
+
+networks:
+  ingress-traefik:
+    external: true
+
+services:
+  vaultwarden:
+    image: ${VAULTWARDEN_APP_IMAGE}
+    container_name: ${VAULTWARDEN_APP_CONTAINER}
+    restart: always
+    networks:
+      - ingress-traefik
+    environment:
+      - TZ=${TIMEZONE}
+      - DOMAIN=https://${VAULTWARDEN_APP_DOMAIN}
+      # Enabling WebSocket notifications
+      - WEBSOCKET_ENABLED=true
+      # Disable registration of new users
+      - SIGNUPS_ALLOWED=${VAULTWARDEN_APP_SIGNUPS_ALLOWED}
+      # Disable invitations
+      - INVITATIONS_ALLOWED=${VAULTWARDEN_APP_INVITATIONS_ALLOWED}
+      # SMTP
+      - SMTP_HOST=${VAULTWARDEN_APP_SMTP_HOST}
+      - SMTP_PORT=${VAULTWARDEN_APP_SMTP_PORT}
+      - SMTP_SECURITY=${VAULTWARDEN_APP_SMTP_SECURITY}
+      - SMTP_FROM=${VAULTWARDEN_APP_SMTP_FROM}
+      - SMTP_USERNAME=${VAULTWARDEN_APP_SMTP_USERNAME}
+      - SMTP_PASSWORD=${VAULTWARDEN_APP_SMTP_PASSWORD}
+    volumes:
+      - ${ROOT_DIR}/data:/data
+    healthcheck:
+      test: curl -f localhost:80 || exit 1
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 15s
+    labels:
+      - traefik.enable=true
+      # routers
+      - traefik.http.routers.vaultwarden-app.rule=Host(`${VAULTWARDEN_APP_DOMAIN}`)
+      - traefik.http.routers.vaultwarden-app.entrypoints=web,websecure
+      - traefik.http.routers.vaultwarden-app.service=vaultwarden-app@docker
+      - traefik.http.routers.vaultwarden-app-notification.rule=Host(`${VAULTWARDEN_APP_DOMAIN}`) && Path(`/notification/hub`)
+      - traefik.http.routers.vaultwarden-app-notification.entrypoints=web,websecure
+      - traefik.http.routers.vaultwarden-app-notification.service=vaultwarden-app-notification@docker
+      # services
+      - traefik.http.services.vaultwarden-app.loadbalancer.server.port=80
+      - traefik.http.services.vaultwarden-app-notification.loadbalancer.server.port=3012

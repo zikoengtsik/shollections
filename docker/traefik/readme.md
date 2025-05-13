@@ -83,8 +83,8 @@ I recommend using the Cloudflare DNS provider to create the DNS challenge. You n
 
 2. Update environment variables in the `.env` file.
 
-    + `TRAEFIK_APP_ACME_EMAIL`: The email address for the ACME challenge.
-    + `TRAEFIK_APP_ACME_DNS_PROVIDER`: The DNS provider for the ACME challenge. Set the value to `cloudflare`.
+    + `TRAEFIK_PROXY_ACME_EMAIL`: The email address for the ACME challenge.
+    + `TRAEFIK_PROXY_ACME_DNS_PROVIDER`: The DNS provider for the ACME challenge. Set the value to `cloudflare`.
 
 3. Add the Cloudflare API token to the `compose.yaml` file.
 

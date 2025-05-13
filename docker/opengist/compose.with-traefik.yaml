@@ -1,0 +1,30 @@
+name: opengist
+
+networks:
+  ingress-traefik:
+    external: true
+
+services:
+  opengist:
+    image: ${OPENGIST_APP_IMAGE}
+    container_name: ${OPENGIST_APP_CONTAINER}
+    restart: always
+    environment:
+      - TZ=${TIMEZONE}
+      # User
+      - UID=0
+      - GID=0
+      # Opengist
+      - OG_EXTERNAL_URL=https://${OPENGIST_APP_DOMAIN}
+    networks:
+      - ingress-traefik
+    volumes:
+      - ${ROOT_DIR}/data:/opengist
+    labels:
+      - traefik.enable=true
+      # routers
+      - traefik.http.routers.opengist-app.rule=Host(`${OPENGIST_APP_DOMAIN}`)
+      - traefik.http.routers.opengist-app.entrypoints=web,websecure
+      - traefik.http.routers.opengist-app.service=opengist-app@docker
+      # services
+      - traefik.http.services.opengist-app.loadbalancer.server.port=6157

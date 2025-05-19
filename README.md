@@ -5,6 +5,8 @@ This collections represent my personal journey in exploring self-hosted solution
 
 ## Collections
 
+- [docker](docker/readme.md): Applications deployment on the single server with Docker 🐳.
+
 ## License
 
 Distributed under the MIT License. See the [`LICENSE.txt`](LICENSE.txt) file for more information.
